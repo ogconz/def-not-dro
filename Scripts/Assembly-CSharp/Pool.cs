@@ -1,0 +1,165 @@
+using System;
+using System.Collections.Generic;
+
+public class Pool<K, V> where V : IPoolObject<K>
+{
+	public delegate bool Compare<T>(T value) where T : V;
+
+	protected readonly Dictionary<K, List<V>> m_objects = new Dictionary<K, List<V>>();
+
+	protected readonly Dictionary<Type, List<V>> m_cache = new Dictionary<Type, List<V>>();
+
+	public virtual int maxInstances { get; protected set; }
+
+	public virtual int instanceCount => m_objects.Count;
+
+	public virtual int cacheCount => m_cache.Count;
+
+	public Pool(int maxInstances)
+	{
+		this.maxInstances = maxInstances;
+	}
+
+	public virtual bool CanPush()
+	{
+		return instanceCount + 1 < maxInstances;
+	}
+
+	public virtual bool Push(K groupKey, V value)
+	{
+		bool result = false;
+		if (CanPush())
+		{
+			value.OnPush();
+			if (!m_objects.ContainsKey(groupKey))
+			{
+				m_objects.Add(groupKey, new List<V>());
+			}
+			m_objects[groupKey].Add(value);
+			Type type = value.GetType();
+			if (!m_cache.ContainsKey(type))
+			{
+				m_cache.Add(type, new List<V>());
+			}
+			m_cache[type].Add(value);
+			result = true;
+		}
+		else
+		{
+			value.OnFailedPush();
+		}
+		return result;
+	}
+
+	public virtual T Pop<T>() where T : V
+	{
+		T val = default(T);
+		Type typeFromHandle = typeof(T);
+		if (ValidateForPop(typeFromHandle))
+		{
+			for (int i = 0; i < m_cache[typeFromHandle].Count; i++)
+			{
+				val = (T)(object)m_cache[typeFromHandle][i];
+				if (val != null && m_objects.ContainsKey(val.group))
+				{
+					m_objects[val.group].Remove((V)(object)val);
+					RemoveFromCache((V)(object)val, typeFromHandle);
+					val.Create();
+					break;
+				}
+			}
+		}
+		return val;
+	}
+
+	public virtual T Pop<T>(K groupKey) where T : V
+	{
+		T val = default(T);
+		if (Contains(groupKey) && GroupCount(groupKey) > 0)
+		{
+			for (int i = 0; i < m_objects[groupKey].Count; i++)
+			{
+				if (m_objects[groupKey][i] is T)
+				{
+					val = (T)(object)m_objects[groupKey][i];
+					Type type = val.GetType();
+					RemoveObject(groupKey, i);
+					RemoveFromCache((V)(object)val, type);
+					val.Create();
+					break;
+				}
+			}
+		}
+		return val;
+	}
+
+	public virtual T Pop<T>(Compare<T> comparer) where T : V
+	{
+		T val = default(T);
+		Type typeFromHandle = typeof(T);
+		if (ValidateForPop(typeFromHandle))
+		{
+			for (int i = 0; i < m_cache[typeFromHandle].Count; i++)
+			{
+				T val2 = (T)(object)m_cache[typeFromHandle][i];
+				if (comparer(val2))
+				{
+					m_objects[val2.group].Remove((V)(object)val2);
+					RemoveFromCache((V)(object)val, typeFromHandle);
+					val = val2;
+					val.Create();
+					break;
+				}
+			}
+		}
+		return val;
+	}
+
+	public virtual int GroupCount(K groupKey)
+	{
+		return m_objects[groupKey].Count;
+	}
+
+	public virtual bool Contains(K groupKey)
+	{
+		return m_objects.ContainsKey(groupKey);
+	}
+
+	public virtual void Clear()
+	{
+		m_objects.Clear();
+	}
+
+	protected virtual bool ValidateForPop(Type type)
+	{
+		if (m_cache.ContainsKey(type))
+		{
+			return m_cache[type].Count > 0;
+		}
+		return false;
+	}
+
+	protected virtual void RemoveObject(K groupKey, int index)
+	{
+		if (index >= 0 && index < m_objects[groupKey].Count)
+		{
+			m_objects[groupKey].RemoveAt(index);
+			if (m_objects[groupKey].Count == 0)
+			{
+				m_objects.Remove(groupKey);
+			}
+		}
+	}
+
+	protected void RemoveFromCache(V value, Type type)
+	{
+		if (m_cache.ContainsKey(type))
+		{
+			m_cache[type].Remove(value);
+			if (m_cache[type].Count == 0)
+			{
+				m_cache.Remove(type);
+			}
+		}
+	}
+}

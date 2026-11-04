@@ -1,0 +1,41 @@
+namespace GameOverlay
+{
+	public enum DLCCode
+	{
+		Unknown = 0,
+		Police = 1,
+		Gold = 2,
+		Trio = 3,
+		Power = 4,
+		TimeAttack = 5,
+		FreeContent = 6,
+		Origins = 7,
+		NewStyle = 8,
+		NewStyle2 = 9,
+		Halloween = 10,
+		DriftWar = 11,
+		RuntimeDLC = 12,
+		CanyonTrip = 13,
+		RussianDriftStyle = 14,
+		JapanFest = 15,
+		AmericanWays = 16,
+		HalloweenVinyls = 17,
+		NewYearStickers2020 = 18,
+		StreetClassStickersVinyls = 19,
+		ProDriftStickersVinyls = 20,
+		NightMode = 21,
+		SeasonPass = 22,
+		SouthAmericaStyle = 23,
+		StreetTuners = 24,
+		HitTheWall = 25,
+		SayakaS15 = 26,
+		Swaps = 27,
+		YoungTimers = 28,
+		Sayaka180SX = 29,
+		SayakaRX7 = 30,
+		MeowtorMadness = 31,
+		WildUnion = 32,
+		CarPresetsUnlock = 33,
+		FreshX = 34
+	}
+}
